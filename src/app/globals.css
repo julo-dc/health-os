@@ -13,9 +13,11 @@
   --surface-2:      #ffffff;
   --text-primary:   #0b0b0b;
   --text-secondary: #52514e;
-  --text-muted:     #898781;
+  /* 4.61:1 on the light surface. The previous #898781 measured 3.50:1, below
+     the 4.5 AA floor for body text, and it was the app's most-used tone. */
+  --text-muted:     #75736e;
   --gridline:       #e1e0d9;
-  --axis:           #c3c2b7;
+  --axis:           #b8b7ae;
   --border:         rgba(11, 11, 11, 0.10);
   --border-strong:  rgba(11, 11, 11, 0.18);
 

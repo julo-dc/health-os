@@ -91,7 +91,7 @@ export function LogClient({ metrics, recent, notes, today, goalKeys }: {
               <label key={m.key} className="text-xs">
                 <span className="mb-1 flex items-center justify-between">
                   <span className="label">{m.label}{m.unit ? ` (${m.unit})` : ""}</span>
-                  {goalKeys.includes(m.key) ? <span className="chip text-[9px]" style={{ color: "var(--series-1)" }}>goal</span> : null}
+                  {goalKeys.includes(m.key) ? <span className="chip text-[11px]" style={{ color: "var(--series-1)" }}>goal</span> : null}
                 </span>
                 <input
                   className="input num" type="number" step="any" inputMode="decimal"

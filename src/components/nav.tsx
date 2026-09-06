@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/goals", label: "Goals" },
   { href: "/analyze", label: "Analyze" },
+  { href: "/standing", label: "Standing" },
   { href: "/log", label: "Log" },
   { href: "/photos", label: "Photos" },
   { href: "/data", label: "Data" },

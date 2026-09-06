@@ -9,6 +9,9 @@ export const POST = route(async (user, req) => {
   const b = await req.json();
   const patch: Record<string, unknown> = {};
   if (b.age !== undefined) patch.age = b.age;
+  // Population norms are stratified by sex; without it the benchmarks page has
+  // nothing valid to compare against.
+  if (b.sex !== undefined) patch.sex = b.sex === "male" || b.sex === "female" ? b.sex : null;
 
   await sql`
     INSERT INTO settings (user_id, tz, prefs)

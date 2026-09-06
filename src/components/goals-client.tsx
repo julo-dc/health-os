@@ -232,8 +232,8 @@ export function GoalsClient({ goals, metrics, llmEnabled }: {
                         {" → "}
                         <b style={{ color: "var(--text-primary)" }}>{t.target_value || "?"}</b>{t.unit}
                       </span>
-                      {t.hasData === false ? <span className="chip tone-warning text-[9px]">never logged</span> : null}
-                      {t.stale ? <span className="chip tone-warning text-[9px]">stale</span> : null}
+                      {t.hasData === false ? <span className="chip tone-warning text-[11px]">never logged</span> : null}
+                      {t.stale ? <span className="chip tone-warning text-[11px]">stale</span> : null}
                       {t.notes ? <span>{t.notes}</span> : null}
                     </div>
                   </div>

@@ -4,8 +4,8 @@ import { getUser } from "@/lib/auth";
 import { Nav } from "@/components/nav";
 
 export const metadata: Metadata = {
-  title: "Vector — goal intelligence",
-  description: "Your health, training and work data, pointed at one goal.",
+  title: "Vector",
+  description: "Personal health and performance analytics.",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 

@@ -38,7 +38,7 @@ export function Explain({ metric, term, children, side = "bottom" }: {
       <button
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen((o) => !o); }}
         aria-label={`What is ${typeof title === "string" ? title : metric ?? term}?`}
-        className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-full text-[10px] font-semibold leading-none transition-colors"
+        className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-full text-[11px] font-semibold leading-none transition-colors"
         style={{
           border: "1px solid var(--border-strong)",
           color: open ? "#fff" : "var(--text-muted)",
@@ -86,7 +86,7 @@ export function Explain({ metric, term, children, side = "bottom" }: {
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="mt-2 block">
-      <b className="block text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--text-muted)" }}>{label}</b>
+      <b className="block text-[11px] uppercase tracking-[0.07em]" style={{ color: "var(--text-muted)" }}>{label}</b>
       <span className="block">{children}</span>
     </span>
   );

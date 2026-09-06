@@ -36,7 +36,7 @@ export default async function SettingsPage() {
         daysLeftIfTesting: health.daysLeftIfTesting,
       }}
       llm={{ enabled: llmEnabled(), model: textModel(), vision: visionModel() }}
-      prefs={{ tz: settings?.tz ?? "UTC", age: (settings?.prefs as any)?.age ?? null }}
+      prefs={{ tz: settings?.tz ?? "UTC", age: (settings?.prefs as any)?.age ?? null, sex: (settings?.prefs as any)?.sex ?? null }}
       counts={counts[0]}
     />
   );

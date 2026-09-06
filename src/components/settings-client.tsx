@@ -7,10 +7,11 @@ export function SettingsClient({ user, google, llm, prefs, counts }: {
   user: { email: string; name: string | null };
   google: { connected: boolean; hasRefresh: boolean; scopes: string[]; expected: string[]; daysLeftIfTesting: number | null };
   llm: { enabled: boolean; model: string; vision: string };
-  prefs: { tz: string; age: number | null };
+  prefs: { tz: string; age: number | null; sex: "male" | "female" | null };
   counts: { metrics: number; workouts: number; photos: number; entries: number };
 }) {
   const [age, setAge] = useState(prefs.age ?? "");
+  const [sex, setSex] = useState<string>(prefs.sex ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -18,7 +19,7 @@ export function SettingsClient({ user, google, llm, prefs, counts }: {
     setSaving(true); setSaved(false);
     await fetch("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ age: age === "" ? null : Number(age) }),
+      body: JSON.stringify({ age: age === "" ? null : Number(age), sex: sex || null }),
     });
     setSaving(false); setSaved(true);
   };
@@ -102,15 +103,26 @@ export function SettingsClient({ user, google, llm, prefs, counts }: {
           </p>
         </Section>
 
-        <Section title="Personal" subtitle="Used by the training-load model">
-          <label className="block text-xs">
-            <span className="label mb-1 block">Age</span>
-            <input className="input num w-32" type="number" value={age} placeholder="—"
-                   onChange={(e) => setAge(e.target.value)} />
-            <span className="mt-1 block text-[11px]" style={{ color: "var(--text-muted)" }}>
-              Sets your estimated max heart rate (Tanaka), which scales training-load intensity.
-            </span>
-          </label>
+        <Section title="Personal" subtitle="Used by the training model and population benchmarks">
+          <div className="flex flex-wrap gap-3">
+            <label className="block text-xs">
+              <span className="label mb-1 block">Age</span>
+              <input className="input num w-24" type="number" value={age} placeholder="—"
+                     onChange={(e) => setAge(e.target.value)} />
+            </label>
+            <label className="block text-xs">
+              <span className="label mb-1 block">Sex</span>
+              <select className="input w-32" value={sex} onChange={(e) => setSex(e.target.value)}>
+                <option value="">—</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </label>
+          </div>
+          <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+            Age sets your estimated max heart rate (Tanaka), which scales training-load intensity.
+            Both are needed for population benchmarks, which are stratified by age and sex.
+          </p>
           <div className="mt-3 flex items-center gap-3">
             <button onClick={savePrefs} disabled={saving} className="btn">
               {saving ? <><Spinner /> Saving…</> : "Save"}

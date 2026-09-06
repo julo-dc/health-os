@@ -42,7 +42,7 @@ export function AnalyzeClient({ metrics, counts, initial }: {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Analyze</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Trend tests, change points, forecasts and what moves with what.
+          Trend tests, change points, forecasts, correlations.
         </p>
       </div>
 
@@ -106,7 +106,7 @@ export function AnalyzeClient({ metrics, counts, initial }: {
           </Section>
 
           <div className="grid gap-5 lg:grid-cols-3">
-            <Section title="Trend" subtitle="Mann-Kendall — robust to outliers">
+            <Section title="Trend" subtitle="Mann-Kendall, autocorrelation-corrected">
               {SEMANTICS[metric]?.caveat ? (
                 <p className="mb-3 rounded-lg px-2.5 py-2 text-[11px] bg-warning">
                   <b className="tone-warning">Careful. </b>
@@ -130,7 +130,7 @@ export function AnalyzeClient({ metrics, counts, initial }: {
               )}
             </Section>
 
-            <Section title="Day of week" subtitle="Difference from your overall average — absolute values hide the effect">
+            <Section title="Day of week" subtitle="Difference from your average">
               <BarChart height={180} precision={dp} unit={data.unit}
                         data={(data.weekday ?? []).filter((w: any) => w.delta !== null)
                           .map((w: any) => ({
@@ -154,7 +154,7 @@ export function AnalyzeClient({ metrics, counts, initial }: {
 
           {data.comparison ? (
             <Section title={`${data.label} vs ${data.comparison.label}`}
-                     subtitle="Rank correlation at each lag. Lag 1 means yesterday's value against today's outcome.">
+                     subtitle="Rank correlation by lag. Lag 1 = yesterday against today.">
               <div className="grid gap-5 lg:grid-cols-2">
                 <div>
                   <BarChart height={190}
@@ -199,7 +199,7 @@ export function AnalyzeClient({ metrics, counts, initial }: {
           ) : null}
 
           <div className="grid gap-5 lg:grid-cols-2">
-            <Section title="Related metrics" subtitle="Everything in your data that moves with this, at its best lag">
+            <Section title="Related metrics" subtitle="Strongest correlations, at best lag">
               {!data.related?.length ? <Empty>Nothing correlates significantly.</Empty> : (
                 <ul className="space-y-2">
                   {data.related.map((r: any) => (
@@ -220,7 +220,7 @@ export function AnalyzeClient({ metrics, counts, initial }: {
             </Section>
 
             <Section title={<span className="flex items-center gap-1.5"><Term term="change_point">Change points &amp; outliers</Term></span> as any}
-                     subtitle="Where the level genuinely shifted">
+                     subtitle="Level shifts and outliers">
               {!data.changePoints?.length && !data.anomalies?.length ? <Empty>Nothing detected.</Empty> : (
                 <ul className="space-y-2 text-xs">
                   {data.changePoints?.map((c: any) => (

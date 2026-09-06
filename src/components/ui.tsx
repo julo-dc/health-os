@@ -21,7 +21,7 @@ export function StatusPill({ tone, children }: { tone: string; children: ReactNo
   const icon = tone === "good" ? "▲" : tone === "critical" ? "▼" : tone === "warning" || tone === "serious" ? "●" : "–";
   return (
     <span className={`chip ${TONE_CLASS[tone] ?? TONE_CLASS.neutral}`} style={{ borderColor: "transparent" }}>
-      <span aria-hidden className="text-[9px]">{icon}</span>{children}
+      <span aria-hidden className="text-[11px]">{icon}</span>{children}
     </span>
   );
 }
@@ -65,7 +65,7 @@ export function Spinner({ size = 14 }: { size?: number }) {
 export function Confidence({ level }: { level: "high" | "medium" | "low" }) {
   const n = level === "high" ? 3 : level === "medium" ? 2 : 1;
   return (
-    <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: "var(--text-muted)" }}
+    <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: "var(--text-muted)" }}
           title={`${level} confidence — based on how many readings and how much of the period is covered`}>
       <span className="flex gap-[2px]">
         {[0, 1, 2].map((i) => (

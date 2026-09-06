@@ -98,9 +98,9 @@ export function Dashboard({ report, briefing, briefingAt, llmEnabled, stats }: {
     <div className="space-y-5 rise">
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       {g ? <GoalHero report={report} onSync={sync} syncing={syncing} msg={msg} diag={diag} stats={stats} /> : (
-        <Section title="No goal set" subtitle="Everything here is measured against a goal — set one to begin.">
+        <Section title="No goal set" subtitle="Everything is measured against a goal.">
           <Empty cta={<Link href="/goals" className="btn btn-primary">Set your goal</Link>}>
-            Describe what you&apos;re working toward in plain language and it becomes a measurable target set.
+            Describe what you&apos;re working toward. It becomes a set of measurable targets.
           </Empty>
         </Section>
       )}
@@ -167,15 +167,15 @@ function FirstRun({ onSync, syncing, msg, diag }: {
   onSync: () => void; syncing: boolean; msg: string | null; diag: SyncDiagnosis | null;
 }) {
   const steps = [
-    { n: 1, title: "Connect Google Health", body: "Pulls sleep, resting HR, HRV, steps, weight, body fat, workouts and more from your Fitbit via Google's cloud API.", action: <button onClick={onSync} disabled={syncing} className="btn btn-primary">{syncing ? <><Spinner /> Syncing…</> : "Sync now"}</button> },
-    { n: 2, title: "Upload your CSVs", body: "Race timings, workout exports, or any spreadsheet you keep. Columns are auto-mapped and you confirm before anything is stored.", action: <Link href="/data" className="btn">Import data</Link> },
-    { n: 3, title: "Set your goal", body: "Describe it in plain language — \"build my business and do a full recomp\" — and it becomes a measurable target set.", action: <Link href="/goals" className="btn">Set a goal</Link> },
+    { n: 1, title: "Connect Google Health", body: "Sleep, resting HR, HRV, steps, weight, body fat and workouts, from Fitbit via Google's cloud API.", action: <button onClick={onSync} disabled={syncing} className="btn btn-primary">{syncing ? <><Spinner /> Syncing…</> : "Sync now"}</button> },
+    { n: 2, title: "Import CSVs", body: "Race timings, workout exports, lifting logs, spreadsheets. Columns are read automatically; you confirm before anything is stored.", action: <Link href="/data" className="btn">Import data</Link> },
+    { n: 3, title: "Set a goal", body: "Describe it in plain language. It becomes a set of measurable targets.", action: <Link href="/goals" className="btn">Set a goal</Link> },
   ];
   return (
     <div className="mx-auto max-w-2xl py-10 rise">
-      <h1 className="text-2xl font-semibold tracking-tight">Let&apos;s get your data in.</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">No data yet</h1>
       <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-        Three steps. You can do them in any order, but the goal is what makes everything else mean something.
+        Connect a source, then set a goal. Everything is measured against the goal.
       </p>
       {diag ? <div className="mt-5"><SyncDiagnosisCard diag={diag} /></div>
             : msg ? <div className="mt-4 card-tight text-sm">{msg}</div> : null}
@@ -386,7 +386,7 @@ function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, progres
   return (
     <Section
       title="Coach briefing"
-      subtitle={at ? `Generated ${fmtDayLong(at)}` : "Reads your computed statistics and tells you what to do about them"}
+      subtitle={at ? fmtDayLong(at) : "Not yet generated"}
       action={
         llmEnabled && hasGoal ? (
           <button onClick={onGenerate} disabled={thinking} className="btn text-xs">
@@ -405,7 +405,7 @@ function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, progres
               <div className="label mb-1.5">Looked at so far</div>
               <div className="flex flex-wrap gap-1.5">
                 {progress.tools.map((t) => (
-                  <span key={t} className="chip text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                  <span key={t} className="chip text-[11px]" style={{ color: "var(--text-secondary)" }}>
                     {t.replace(/_/g, " ")}
                   </span>
                 ))}
@@ -413,8 +413,7 @@ function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, progres
             </div>
           ) : null}
           <p className="mt-2.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
-            This takes a couple of minutes. It runs as a resumable job, so leaving the page
-            won&apos;t lose the work — it will be here when you come back.
+            Runs as a resumable job. Safe to leave the page.
           </p>
         </div>
       ) : !llmEnabled ? (
@@ -498,7 +497,7 @@ function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, progres
                   <li key={i} className="rounded-lg p-2.5" style={{ background: "var(--surface-2)" }}>
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-medium">{a.action}</span>
-                      <span className="chip shrink-0 text-[10px]" style={{ color: "var(--text-muted)" }}>{a.effort}</span>
+                      <span className="chip shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>{a.effort}</span>
                     </div>
                     <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{a.why}</p>
                     {a.expectedEffect ? (
@@ -565,9 +564,9 @@ function ReadinessPanel({ report }: { report: FullReport }) {
   const r = report.readiness;
   const tone = r.value === null ? "neutral" : r.value >= 66 ? "good" : r.value >= 40 ? "warning" : "critical";
   return (
-    <Section title="Readiness" subtitle="HRV, resting HR, sleep and form — each vs your own 60-day baseline">
+    <Section title="Readiness" subtitle="vs your own 60-day baseline">
       {r.value === null ? (
-        <Empty>Needs about two weeks of HRV, resting HR or sleep data.</Empty>
+        <Empty>Needs ~14 days of HRV, resting HR or sleep.</Empty>
       ) : (
         <div className="flex items-center gap-5">
           <RadialScore value={r.value} size={110} tone={TONE_COLOR[tone]} label="today" />
@@ -598,7 +597,7 @@ function LoadPanel({ report }: { report: FullReport }) {
   const formTone = warming || l.tsb === null ? "neutral"
     : l.tsb < -25 ? "critical" : l.tsb < -10 ? "warning" : l.tsb > 20 ? "warning" : "good";
   return (
-    <Section title="Training load" subtitle="Banister impulse-response model over your sessions">
+    <Section title="Training load" subtitle="Banister impulse-response model">
       {warming ? (
         <div className="mb-3 rounded-lg px-3 py-2.5 text-xs" style={{ background: "var(--surface-2)" }}>
           <b>Establishing baseline</b>
@@ -627,10 +626,10 @@ function LoadPanel({ report }: { report: FullReport }) {
 function RecompPanel({ report }: { report: FullReport }) {
   const r = report.recomp;
   return (
-    <Section title="Body recomposition" subtitle="What the scale can't tell you: fat vs lean">
+    <Section title="Body recomposition" subtitle="Fat vs lean mass">
       {!r ? (
         <Empty cta={<Link href="/log" className="btn text-xs">Log weight &amp; body fat</Link>}>
-          Needs weight <em>and</em> body-fat % on the same days.
+          Needs weight and body-fat % on the same days.
         </Empty>
       ) : (
         <>
@@ -680,7 +679,7 @@ function DriverPanel({ report }: { report: FullReport }) {
       </span>) as any}
       subtitle={d ? `Ridge regression on ${d.n} days, each input at its most predictive lag. Adjusted R² ${d.adjR2.toFixed(2)}.` : undefined}>
       {!d ? (
-        <Empty>Needs about 20 days of overlapping data between your goal metric and your daily inputs.</Empty>
+        <Empty>Needs ~20 days of overlap between the target and your daily inputs.</Empty>
       ) : (
         <>
           <div className="space-y-2.5">
@@ -731,9 +730,9 @@ function EventsPanel({ report }: { report: FullReport }) {
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
 
   return (
-    <Section title="What changed" subtitle="Statistically significant level shifts and outlier days">
+    <Section title="What changed" subtitle="Significant level shifts and outliers">
       {!events.length ? (
-        <Empty>Nothing unusual detected. That&apos;s a good thing.</Empty>
+        <Empty>Nothing detected.</Empty>
       ) : (
         <ul className="space-y-2.5">
           {events.map((e, i) => (
@@ -775,7 +774,7 @@ function SnapshotGrid({ report }: { report: FullReport }) {
   };
 
   return (
-    <Section title="Everything else" subtitle="7-day average vs the week before" action={
+    <Section title="Everything else" subtitle="7-day average vs prior week" action={
       <Link href="/analyze" className="btn btn-ghost text-xs">Deep dive</Link>
     }>
       <div className="space-y-5">
@@ -801,7 +800,7 @@ function SnapshotGrid({ report }: { report: FullReport }) {
                       <Sparkline points={s.spark} width={64} height={26}
                                  color={good === null ? "var(--series-1)" : good ? "var(--status-good)" : "var(--status-warning)"} />
                       {s.deltaPct !== null ? (
-                        <div className="num text-[10px]"
+                        <div className="num text-[11px]"
                              style={{ color: good === null ? "var(--text-muted)" : good ? "var(--success-text)" : "var(--status-warning)" }}>
                           {s.deltaPct > 0 ? "+" : ""}{s.deltaPct.toFixed(1)}%
                         </div>

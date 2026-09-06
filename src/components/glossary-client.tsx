@@ -33,9 +33,8 @@ export function GlossaryClient({ defs, counts }: { defs: MetricDef[]; counts: Re
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Glossary</h1>
         <p className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
-          What every number means, how it&apos;s measured, and how to read it. This is the same
-          reference the AI reads before analysing your data, so its interpretations and these
-          definitions can&apos;t drift apart.
+          What every number means and how to read it. The same reference the model reads,
+          so its interpretations and these definitions cannot drift apart.
         </p>
       </div>
 
@@ -52,7 +51,7 @@ export function GlossaryClient({ defs, counts }: { defs: MetricDef[]; counts: Re
       </div>
 
       <Section title="How the statistics work"
-               subtitle="The techniques behind every claim this app makes">
+               subtitle="Methods behind every claim">
         <div className="grid gap-3 sm:grid-cols-2">
           {Object.entries(STAT_TERMS).map(([k, v]) => (
             <div key={k} className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
@@ -79,9 +78,9 @@ export function GlossaryClient({ defs, counts }: { defs: MetricDef[]; counts: Re
                     <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                       <h3 className="text-sm font-semibold">{d.label}</h3>
                       <code className="num text-[11px]" style={{ color: "var(--text-muted)" }}>{d.key}</code>
-                      {d.unit ? <span className="chip text-[10px]" style={{ color: "var(--text-muted)" }}>{d.unit}</span> : null}
+                      {d.unit ? <span className="chip text-[11px]" style={{ color: "var(--text-muted)" }}>{d.unit}</span> : null}
                       {d.higher_is_better !== null ? (
-                        <span className="chip text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        <span className="chip text-[11px]" style={{ color: "var(--text-muted)" }}>
                           {d.higher_is_better ? "higher is better" : "lower is better"}
                         </span>
                       ) : null}

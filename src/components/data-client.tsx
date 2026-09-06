@@ -121,12 +121,12 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Data</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Sync from Google Health, import spreadsheets, and see exactly what you have.
+          Sources, imports, and coverage.
         </p>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <Section title="Google Health" subtitle="Sleep, HRV, resting HR, steps, weight, body fat, workouts — via Google's cloud API">
+        <Section title="Google Health" subtitle="Fitbit, via Google's cloud API">
           <div className="flex flex-wrap items-end gap-3">
             <StatusPill tone={connected ? "good" : "critical"}>{connected ? "Connected" : "Not connected"}</StatusPill>
             <label className="text-xs">
@@ -179,14 +179,14 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
                 ))}
               </div>
               <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
-                A failed type usually means your account has no data of that kind, or the scope wasn&apos;t granted. The rest still sync.
+                A failed type usually means no data of that kind, or a scope not granted.
               </p>
             </div>
           ) : null}
         </Section>
 
         <Section title="Import a CSV"
-                 subtitle="Race timings, workout exports, nutrition logs, business spreadsheets — anything with a date">
+                 subtitle="Anything with a date column">
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-[220px] flex-1 text-xs">
               <span className="label mb-1 block">What is this file? (optional)</span>
@@ -200,8 +200,7 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
             </label>
           </div>
           <p className="mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-            The file is read and interpreted first — what it is, what each column means, and which units
-            it&apos;s in. You review that reading and correct anything before a single row is stored.
+            Columns, units and file type are detected first. You confirm before anything is stored.
           </p>
           {err ? <p className="mt-3 text-sm tone-critical">{err}</p> : null}
           {result ? (
@@ -286,7 +285,7 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
                     <tr key={c.header} style={{ borderTop: "1px solid var(--border)", opacity: c.metric ? 1 : 0.55 }}>
                       <td className="py-2 pr-4 align-top font-medium">
                         {c.header}
-                        {c.isNew ? <span className="chip ml-1.5 text-[9px]" style={{ color: "var(--series-3)" }}>new</span> : null}
+                        {c.isNew ? <span className="chip ml-1.5 text-[11px]" style={{ color: "var(--series-3)" }}>new</span> : null}
                       </td>
                       <td className="py-2 pr-4 align-top num" style={{ color: "var(--text-muted)" }}>
                         {(prof?.sample ?? []).join(" · ").slice(0, 40) || "—"}
@@ -336,7 +335,7 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
       ) : null}
 
       {/* ── Data health ──────────────────────────────────────────────── */}
-      <Section title="What you have" subtitle="Every metric, its span and where it came from. Analytics on a sparse series is a guess — this is how you know.">
+      <Section title="Coverage" subtitle="Every metric, its span, and its source">
         {!coverage.length ? <Empty>No data yet.</Empty> : (
           <>
             {workouts.n > 0 ? (
@@ -362,7 +361,7 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
                       <td className="py-1.5 pr-4 num" style={{ color: "var(--text-muted)" }}>{c.first} → {c.last}</td>
                       <td className="py-1.5">
                         <span className="flex flex-wrap gap-1">
-                          {c.sources.map((s) => <span key={s} className="chip text-[10px]" style={{ color: "var(--text-muted)" }}>{s}</span>)}
+                          {c.sources.map((s) => <span key={s} className="chip text-[11px]" style={{ color: "var(--text-muted)" }}>{s}</span>)}
                         </span>
                       </td>
                     </tr>

@@ -144,7 +144,7 @@ export function PhotosClient({ photos, llmEnabled }: { photos: Photo[]; llmEnabl
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/api/photos/${p.id}/image`} alt={`${p.kind} ${p.date}`}
                        className="aspect-[3/4] w-full object-cover transition-transform group-hover:scale-105" />
-                  <span className="absolute left-2 top-2 chip text-[10px]"
+                  <span className="absolute left-2 top-2 chip text-[11px]"
                         style={{ background: "rgba(0,0,0,.6)", color: "#fff", borderColor: "transparent" }}>{p.kind}</span>
                 </div>
                 <div className="mt-2 num text-xs" style={{ color: "var(--text-muted)" }}>{p.date}</div>

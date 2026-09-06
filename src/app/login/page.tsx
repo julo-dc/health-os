@@ -19,7 +19,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
                style={{ background: "var(--series-1)" }}>V</div>
           <h1 className="text-2xl font-semibold tracking-tight">Vector</h1>
           <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Your health, training and work data, pointed at one goal.
+            Personal health and performance analytics.
           </p>
         </div>
 
