@@ -100,15 +100,20 @@ export async function recomputeDerived(userId: number): Promise<{ written: numbe
 
     const ls = trainingLoad(daily);
     for (let i = 0; i < ls.dates.length; i++) {
-      rows.push({ date: ls.dates[i], key: "ctl", value: ls.ctl[i], source: "derived" });
-      rows.push({ date: ls.dates[i], key: "atl", value: ls.atl[i], source: "derived" });
-      rows.push({ date: ls.dates[i], key: "tsb", value: ls.tsb[i], source: "derived" });
-      if (ls.acwr[i] > 0) rows.push({ date: ls.dates[i], key: "acwr", value: ls.acwr[i], source: "derived" });
+      const date = ls.dates[i];
+      rows.push({ date, key: "ctl", value: ls.ctl[i], source: "derived" });
+      rows.push({ date, key: "atl", value: ls.atl[i], source: "derived" });
+      // tsb is undefined on day 0 and acwr before a chronic base exists; a null
+      // is a genuine "not yet knowable", not a zero.
+      if (ls.tsb[i] !== null) rows.push({ date, key: "tsb", value: ls.tsb[i]!, source: "derived" });
+      if (ls.acwr[i] !== null) rows.push({ date, key: "acwr", value: ls.acwr[i]!, source: "derived" });
     }
     parts.training_load = ls.dates.length * 4;
 
     // --- readiness (needs form, so it comes after the load model) ---
-    const tsbPoints: Point[] = ls.dates.map((d, i) => ({ date: d, value: ls.tsb[i] }));
+    const tsbPoints: Point[] = ls.dates
+      .map((d, i) => ({ date: d, value: ls.tsb[i] }))
+      .filter((p): p is Point => p.value !== null);
     const readiness = readinessSeries({
       hrv: base.hrv_ms ?? [],
       restingHr: base.resting_hr ?? [],

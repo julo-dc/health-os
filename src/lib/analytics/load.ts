@@ -54,10 +54,14 @@ export function estimateMaxHr(age: number | null, observedMax: number | null): n
 export type LoadSeries = {
   dates: string[];
   daily: number[];
-  ctl: number[];   // chronic training load — "fitness"
-  atl: number[];   // acute training load — "fatigue"
-  tsb: number[];   // training stress balance — "form"
-  acwr: number[];  // acute:chronic workload ratio — injury-risk proxy
+  ctl: number[];              // chronic training load — "fitness"
+  atl: number[];              // acute training load — "fatigue"
+  tsb: (number | null)[];     // training stress balance — "form"; null on day 0
+  acwr: (number | null)[];    // acute:chronic ratio; null before a chronic base exists
+  /** True once a full chronic window has elapsed. Below this the values are
+   *  unbiased but high-variance, so risk thresholds must not be applied. */
+  established: boolean[];
+  warmupDays: number;
 };
 
 /**
@@ -69,7 +73,9 @@ export type LoadSeries = {
  * risk climbs sharply in the sports-science literature.
  */
 export function trainingLoad(daily: { date: string; load: number }[], ctlDays = 42, atlDays = 7): LoadSeries {
-  if (!daily.length) return { dates: [], daily: [], ctl: [], atl: [], tsb: [], acwr: [] };
+  if (!daily.length) {
+    return { dates: [], daily: [], ctl: [], atl: [], tsb: [], acwr: [], established: [], warmupDays: ctlDays };
+  }
   const start = daily[0].date;
   const end = daily[daily.length - 1].date;
   const map = new Map(daily.map((d) => [d.date, d.load]));
@@ -82,18 +88,38 @@ export function trainingLoad(daily: { date: string; load: number }[], ctlDays = 
 
   const aC = 1 - Math.exp(-1 / ctlDays);
   const aA = 1 - Math.exp(-1 / atlDays);
-  const ctl: number[] = [], atl: number[] = [], tsb: number[] = [], acwr: number[] = [];
+  const ctl: number[] = [], atl: number[] = [];
+  const tsb: (number | null)[] = [], acwr: (number | null)[] = [];
+  const established: boolean[] = [];
+
   let c = 0, a = 0;
   for (let i = 0; i < loads.length; i++) {
-    // Form is measured *before* today's session lands
-    tsb.push(c - a);
+    // Form is measured *before* today's session lands, so it uses yesterday's
+    // debiased values.
+    const prevBiasC = i > 0 ? 1 - Math.pow(1 - aC, i) : 0;
+    const prevBiasA = i > 0 ? 1 - Math.pow(1 - aA, i) : 0;
+    tsb.push(i > 0 ? c / prevBiasC - a / prevBiasA : null);
+
     c = c + aC * (loads[i] - c);
     a = a + aA * (loads[i] - a);
-    ctl.push(c);
-    atl.push(a);
-    acwr.push(c > 1 ? a / c : 0);
+
+    // Both averages start at zero, so early on they under-report by a known
+    // factor. For a constant load L the raw EWMA is exactly L(1-(1-alpha)^(i+1)),
+    // so dividing by that recovers L from day one. Without this the 7-day
+    // average converges ~6x faster than the 42-day one and their ratio starts
+    // near 5.7 — which the app read as an injury-risk spike for every new user's
+    // first six weeks, on identical daily training.
+    const biasC = 1 - Math.pow(1 - aC, i + 1);
+    const biasA = 1 - Math.pow(1 - aA, i + 1);
+    const ctlI = c / biasC;
+    const atlI = a / biasA;
+
+    ctl.push(ctlI);
+    atl.push(atlI);
+    acwr.push(ctlI > 1 ? atlI / ctlI : null);
+    established.push(i >= ctlDays);
   }
-  return { dates, daily: loads, ctl, atl, tsb, acwr };
+  return { dates, daily: loads, ctl, atl, tsb, acwr, established, warmupDays: ctlDays };
 }
 
 /** Foster's monotony & strain: same load every day is more damaging than the

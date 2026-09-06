@@ -1,5 +1,5 @@
 import { sql } from "./db";
-import { getSeriesMulti, getMetricDefMap, todayISO, addDays, isDerivedPair, type Point } from "./metrics";
+import { getSeriesMulti, getMetricDefMap, todayISO, addDays, daysBetween, isDerivedPair, type Point } from "./metrics";
 import { analyseTarget, buildGoalReport, type Goal, type GoalTarget, type GoalReport } from "./analytics/goal";
 import { analyseTrend, findChangePoints, findAnomalies } from "./analytics/trend";
 import { driverAnalysis, type Driver } from "./analytics/drivers";
@@ -22,7 +22,14 @@ export type FullReport = {
   snapshots: Snapshot[];
   readiness: { value: number | null; date: string | null; series: Point[]; parts: Record<string, number> | null };
   recomp: ReturnType<typeof recompScore>;
-  load: { ctl: number | null; atl: number | null; tsb: number | null; acwr: number | null; strain: number | null; monotony: number | null };
+  load: {
+    ctl: number | null; atl: number | null; tsb: number | null; acwr: number | null;
+    strain: number | null; monotony: number | null;
+    /** False while the chronic base is still building — risk thresholds must
+     *  not be applied to the numbers above until this is true. */
+    established: boolean;
+    warmupDaysRemaining: number | null;
+  };
   drivers: { target: string; targetLabel: string; r2: number; adjR2: number; n: number; items: Driver[] } | null;
   changePoints: { metric: string; label: string; date: string; before: number; after: number; delta: number; effectSize: number }[];
   anomalies: { metric: string; label: string; date: string; value: number; z: number; direction: string }[];
@@ -126,6 +133,10 @@ export async function buildFullReport(userId: number, goalId?: number): Promise<
 
   const lastOf = (pts: Point[]) => (pts.length ? pts[pts.length - 1].value : null);
 
+  // How long the training model has had to build a chronic base.
+  const ctlPts = support.ctl ?? [];
+  const loadDays = ctlPts.length ? daysBetween(ctlPts[0].date, today) + 1 : 0;
+
   // ---- drivers ----
   let drivers: FullReport["drivers"] = null;
   const driverTargetKey =
@@ -206,6 +217,8 @@ export async function buildFullReport(userId: number, goalId?: number): Promise<
       ctl: lastOf(support.ctl ?? []), atl: lastOf(support.atl ?? []),
       tsb: lastOf(support.tsb ?? []), acwr: lastOf(support.acwr ?? []),
       strain: ms?.strain ?? null, monotony: ms?.monotony ?? null,
+      established: loadDays >= 42,
+      warmupDaysRemaining: loadDays >= 42 ? null : 42 - loadDays,
     },
     drivers,
     changePoints: changePoints.slice(0, 6),

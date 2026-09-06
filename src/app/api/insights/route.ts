@@ -74,6 +74,11 @@ Today is ${today}${g.daysRemaining !== null ? `, ${g.daysRemaining} days remain`
 Goal Progress Index ${g.index === null ? "unavailable" : Math.round(g.index)}/100 against ${
   g.expectedIndex === null ? "?" : Math.round(g.expectedIndex)}/100 expected on a linear pace — ${STATUS_LABEL[g.status]}.
 
+TRAINING MODEL STATE
+${report.load.established
+  ? "The training-load model has a full chronic base, so ACWR and TSB thresholds are meaningful."
+  : `The training-load model is STILL ESTABLISHING ITS BASELINE (${report.load.warmupDaysRemaining} days to go). CTL, ATL, TSB and ACWR are unbiased but high-variance. Do NOT describe the acute:chronic ratio as an injury risk, and do NOT call the person "buried", until the base is established.`}
+
 TARGETS
 ${g.targets.map((t) =>
   `- ${t.label} (${t.metricKey}): ${t.direction} to ${t.target ?? "?"}${t.unit ?? ""}. ` +

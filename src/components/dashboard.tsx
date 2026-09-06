@@ -524,10 +524,26 @@ function LoadPanel({ report }: { report: FullReport }) {
       </Section>
     );
   }
-  const acwrTone = l.acwr === null ? "neutral" : l.acwr > 1.5 ? "critical" : l.acwr > 1.3 ? "warning" : l.acwr < 0.8 ? "warning" : "good";
-  const formTone = l.tsb === null ? "neutral" : l.tsb < -25 ? "critical" : l.tsb < -10 ? "warning" : l.tsb > 20 ? "warning" : "good";
+  // Until a full 42-day chronic base exists the numbers are unbiased but
+  // high-variance, so the risk thresholds must not be coloured — that is what
+  // made every new user's first six weeks look like an injury emergency.
+  const warming = !l.established;
+  const acwrTone = warming || l.acwr === null ? "neutral"
+    : l.acwr > 1.5 ? "critical" : l.acwr > 1.3 ? "warning" : l.acwr < 0.8 ? "warning" : "good";
+  const formTone = warming || l.tsb === null ? "neutral"
+    : l.tsb < -25 ? "critical" : l.tsb < -10 ? "warning" : l.tsb > 20 ? "warning" : "good";
   return (
     <Section title="Training load" subtitle="Banister impulse-response model over your sessions">
+      {warming ? (
+        <div className="mb-3 rounded-lg px-3 py-2.5 text-xs" style={{ background: "var(--surface-2)" }}>
+          <b>Establishing baseline</b>
+          <span style={{ color: "var(--text-secondary)" }}>
+            {" "}— {l.warmupDaysRemaining} more {l.warmupDaysRemaining === 1 ? "day" : "days"} of
+            history before fitness and injury-risk thresholds mean anything. The numbers below
+            are real; the colour-coding is held back until there is a chronic base to compare against.
+          </span>
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 gap-3">
         <Metric label="Fitness (CTL)" value={fmtNum(l.ctl, 1)} metric="ctl" />
         <Metric label="Fatigue (ATL)" value={fmtNum(l.atl, 1)} metric="atl" />
