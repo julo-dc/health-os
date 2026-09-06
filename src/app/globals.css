@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ───────────────────────────────────────────────────────────
+   Light is the base definition; dark is re-declared under both the OS media
+   query and an explicit [data-theme] stamp so a manual toggle wins either way.
+   Chart series/status values are the validated reference palette.            */
+:root {
+  color-scheme: light;
+  --plane:          #f9f9f7;
+  --surface-1:      #fcfcfb;
+  --surface-2:      #ffffff;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --gridline:       #e1e0d9;
+  --axis:           #c3c2b7;
+  --border:         rgba(11, 11, 11, 0.10);
+  --border-strong:  rgba(11, 11, 11, 0.18);
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-serious:  #ec835a;
+  --status-critical: #d03b3b;
+  --success-text:    #006300;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px -12px rgba(0,0,0,.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane:          #0d0d0d;
+    --surface-1:      #141413;
+    --surface-2:      #1c1c1a;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255, 255, 255, 0.10);
+    --border-strong:  rgba(255, 255, 255, 0.18);
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --success-text: #0ca30c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -16px rgba(0,0,0,.7);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:          #0d0d0d;
+  --surface-1:      #141413;
+  --surface-2:      #1c1c1a;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --gridline:       #2c2c2a;
+  --axis:           #383835;
+  --border:         rgba(255, 255, 255, 0.10);
+  --border-strong:  rgba(255, 255, 255, 0.18);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --success-text: #0ca30c;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px -16px rgba(0,0,0,.7);
+}
+
+html, body { background: var(--plane); color: var(--text-primary); }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+* { border-color: var(--border); }
+
+@layer components {
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+  .card-tight { @apply card p-4; }
+  .card-pad   { @apply card p-5; }
+
+  .label {
+    @apply text-[11px] font-medium uppercase tracking-[0.08em];
+    color: var(--text-muted);
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors;
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    background: var(--surface-2);
+  }
+  .btn:hover:not(:disabled) { background: var(--plane); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--series-1); border-color: var(--series-1); color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--series-1); }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text-primary); }
+
+  .input {
+    @apply w-full rounded-lg px-3 py-2 text-sm outline-none transition;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+  }
+  .input:focus { border-color: var(--series-1); box-shadow: 0 0 0 3px color-mix(in srgb, var(--series-1) 18%, transparent); }
+  .input::placeholder { color: var(--text-muted); }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium;
+    border: 1px solid var(--border);
+  }
+  .divider { border-top: 1px solid var(--border); }
+}
+
+/* Tone helpers — status colour never travels alone, always with a label. */
+.tone-good     { color: var(--status-good); }
+.tone-warning  { color: var(--status-warning); }
+.tone-serious  { color: var(--status-serious); }
+.tone-critical { color: var(--status-critical); }
+.tone-neutral  { color: var(--text-muted); }
+.bg-good     { background: color-mix(in srgb, var(--status-good) 14%, transparent); }
+.bg-warning  { background: color-mix(in srgb, var(--status-warning) 16%, transparent); }
+.bg-serious  { background: color-mix(in srgb, var(--status-serious) 16%, transparent); }
+.bg-critical { background: color-mix(in srgb, var(--status-critical) 14%, transparent); }
+.bg-neutral  { background: var(--surface-2); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--axis); border-radius: 8px; border: 3px solid var(--plane); }
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .35s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin .8s linear infinite; }
