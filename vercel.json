@@ -1,10 +1,8 @@
 {
   "crons": [
-    { "path": "/api/cron", "schedule": "0 5 * * *" }
-  ],
-  "functions": {
-    "src/app/api/sync/route.ts":     { "maxDuration": 300 },
-    "src/app/api/insights/route.ts": { "maxDuration": 120 },
-    "src/app/api/photos/route.ts":   { "maxDuration": 120 }
-  }
+    {
+      "path": "/api/cron",
+      "schedule": "0 5 * * *"
+    }
+  ]
 }

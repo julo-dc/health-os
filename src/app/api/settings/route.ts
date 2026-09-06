@@ -2,6 +2,9 @@ import { route } from "@/lib/api";
 import { sql } from "@/lib/db";
 import { recomputeDerived } from "@/lib/derive";
 
+// Recomputes the derived series, so this needs more than the 10s default.
+export const maxDuration = 60;
+
 export const POST = route(async (user, req) => {
   const b = await req.json();
   const patch: Record<string, unknown> = {};

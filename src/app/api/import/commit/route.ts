@@ -42,27 +42,38 @@ export const POST = route(async (user, req) => {
   /* ── workouts ─────────────────────────────────────────────────────────── */
   if (plan.kind === "workouts") {
     const byField = (k: string) => plan.columns.find((c) => c.metric === k);
-    let n = 0, skipped = 0;
+    const dateC = plan.columns[dateCol];
+    const rowsOut: Record<string, unknown>[] = [];
+    const fp = makeFingerprinter();
+    let skipped = 0;
 
     for (const [i, r] of rows.entries()) {
-      const date = parseDate(r[idx(plan.columns[dateCol].header)] ?? "");
+      const date = parseDate(r[idx(dateC.header)] ?? "");
       if (!date) { skipped++; continue; }
       const numField = (k: string) => { const c = byField(k); return c ? valueOf(r, c) : null; };
       const strField = (k: string) => { const c = byField(k); return c ? (r[idx(c.header)] ?? "").trim() || null : null; };
 
-      await sql`
-        INSERT INTO workouts (user_id, start_time, date, type, name, duration_min, distance_km,
-                              avg_hr, max_hr, calories, elevation_m, rpe, source, external_id)
-        VALUES (${user.id}, NULL, ${date}, ${strField("type")}, ${strField("name")},
-                ${numField("duration_min")}, ${numField("distance_km")}, ${numField("avg_hr")},
-                ${numField("max_hr")}, ${numField("calories")}, ${numField("elevation_m")},
-                ${numField("rpe")}, 'csv', ${`csv:${file.name}:${date}:${i}`.slice(0, 200)})
-        ON CONFLICT (user_id, source, external_id) DO UPDATE SET
-          duration_min = EXCLUDED.duration_min, distance_km = EXCLUDED.distance_km,
-          avg_hr = EXCLUDED.avg_hr, max_hr = EXCLUDED.max_hr, calories = EXCLUDED.calories,
-          rpe = EXCLUDED.rpe, type = EXCLUDED.type, name = EXCLUDED.name`;
-      n++;
+      rowsOut.push({
+        user_id: user.id, start_time: null, date,
+        type: strField("type"), name: strField("name"),
+        duration_min: numField("duration_min"), distance_km: numField("distance_km"),
+        avg_hr: numField("avg_hr"), max_hr: numField("max_hr"),
+        calories: numField("calories"), elevation_m: numField("elevation_m"),
+        rpe: numField("rpe"), source: "csv",
+        // Content-derived so re-importing the same data under a different
+        // filename updates rather than duplicating.
+        external_id: fp([date, strField("type"), strField("name"),
+          numField("duration_min"), numField("distance_km"), numField("calories")]),
+      });
     }
+
+    const n = await insertChunked(rowsOut, "workouts",
+      ["user_id","start_time","date","type","name","duration_min","distance_km",
+       "avg_hr","max_hr","calories","elevation_m","rpe","source","external_id"],
+      sql`DO UPDATE SET duration_min = EXCLUDED.duration_min, distance_km = EXCLUDED.distance_km,
+          avg_hr = EXCLUDED.avg_hr, max_hr = EXCLUDED.max_hr, calories = EXCLUDED.calories,
+          rpe = EXCLUDED.rpe, type = EXCLUDED.type, name = EXCLUDED.name`);
+
     const derived = await recomputeDerived(user.id);
     await log(user.id, file.name, n);
     return { ok: true, kind: "workouts", workouts: n, skipped, derived: derived.written };
@@ -72,9 +83,11 @@ export const POST = route(async (user, req) => {
   if (plan.kind === "sets") {
     const f = (k: string) => plan.columns.find((c) => c.metric === k);
     const dateC = plan.columns[dateCol];
-    let n = 0, skipped = 0;
+    const rowsOut: Record<string, unknown>[] = [];
+    const fp = makeFingerprinter();
+    let skipped = 0;
 
-    for (const [i, r] of rows.entries()) {
+    for (const r of rows) {
       const rawDate = r[idx(dateC.header)] ?? "";
       const date = parseDate(rawDate);
       const exercise = f("exercise") ? (r[idx(f("exercise")!.header)] ?? "").trim() : "";
@@ -82,20 +95,24 @@ export const POST = route(async (user, req) => {
 
       const numOf = (k: string) => { const c = f(k); return c ? valueOf(r, c) : null; };
       const strOf = (k: string) => { const c = f(k); return c ? (r[idx(c.header)] ?? "").trim() || null : null; };
-      const session = strOf("session_name");
 
-      await sql`
-        INSERT INTO strength_sets (user_id, date, started_at, session_name, exercise, set_order,
-                                   weight_kg, reps, rpe, distance_km, duration_s, session_min, source, external_id)
-        VALUES (${user.id}, ${date}, ${Date.parse(rawDate) ? new Date(rawDate) : null}, ${session},
-                ${exercise}, ${numOf("set_order")}, ${numOf("weight_kg")}, ${numOf("reps")},
-                ${numOf("rpe")}, ${numOf("distance_km")}, ${numOf("duration_s")}, ${numOf("session_min")},
-                'csv', ${`csv:${file.name}:${i}`.slice(0, 200)})
-        ON CONFLICT (user_id, source, external_id) DO UPDATE SET
-          weight_kg = EXCLUDED.weight_kg, reps = EXCLUDED.reps, rpe = EXCLUDED.rpe,
-          exercise = EXCLUDED.exercise, set_order = EXCLUDED.set_order`;
-      n++;
+      rowsOut.push({
+        user_id: user.id, date,
+        started_at: Date.parse(rawDate) ? new Date(rawDate) : null,
+        session_name: strOf("session_name"), exercise,
+        set_order: numOf("set_order"), weight_kg: numOf("weight_kg"),
+        reps: numOf("reps"), rpe: numOf("rpe"),
+        distance_km: numOf("distance_km"), duration_s: numOf("duration_s"),
+        session_min: numOf("session_min"), source: "csv",
+        external_id: fp([date, exercise, numOf("set_order"), numOf("weight_kg"), numOf("reps")]),
+      });
     }
+
+    const n = await insertChunked(rowsOut, "strength_sets",
+      ["user_id","date","started_at","session_name","exercise","set_order","weight_kg",
+       "reps","rpe","distance_km","duration_s","session_min","source","external_id"],
+      sql`DO UPDATE SET weight_kg = EXCLUDED.weight_kg, reps = EXCLUDED.reps,
+          rpe = EXCLUDED.rpe, exercise = EXCLUDED.exercise, set_order = EXCLUDED.set_order`);
 
     const sessions = await materialiseStrengthSessions(user.id);
     const derived = await recomputeDerived(user.id);
@@ -169,6 +186,57 @@ async function materialiseStrengthSessions(userId: number): Promise<number> {
     n++;
   }
   return n;
+}
+
+/**
+ * Multi-row INSERT in chunks.
+ *
+ * The previous version awaited one INSERT per CSV row. A Strong or Hevy export
+ * is routinely 10k-50k rows, which at a 5-20ms round trip is 50-1000 seconds —
+ * this route could not finish on any Vercel plan. Batching turns a real import
+ * into a couple of seconds.
+ */
+async function insertChunked(
+  rows: Record<string, unknown>[],
+  table: "workouts" | "strength_sets",
+  cols: string[],
+  onConflict: ReturnType<typeof sql>
+): Promise<number> {
+  if (!rows.length) return 0;
+  // Postgres caps a statement at 65535 bind parameters; stay well under it.
+  const CHUNK = Math.max(1, Math.floor(2000 / cols.length));
+  let written = 0;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const batch = rows.slice(i, i + CHUNK);
+    await sql`
+      INSERT INTO ${sql(table)} ${sql(batch, ...cols)}
+      ON CONFLICT (user_id, source, external_id) ${onConflict}`;
+    written += batch.length;
+  }
+  return written;
+}
+
+/**
+ * Stable content fingerprint (FNV-1a), with an occurrence counter.
+ *
+ * Keying on content rather than filename makes a re-import idempotent however
+ * the file was named. The counter matters because genuinely identical rows are
+ * normal in a lifting log — three sets of 8 at 60kg on the same day are the
+ * same content — and Postgres rejects a batch whose ON CONFLICT target hits the
+ * same row twice. The counter is assigned in file order, so identical content
+ * always yields identical ids.
+ */
+function makeFingerprinter() {
+  const seen = new Map<string, number>();
+  return (parts: (string | number | null | undefined)[]): string => {
+    const str = parts.map((p) => (p === null || p === undefined ? "" : String(p))).join("|");
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    const base = (h >>> 0).toString(36);
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    return n === 1 ? `csv:${base}` : `csv:${base}.${n}`;
+  };
 }
 
 async function log(userId: number, filename: string, rows: number) {

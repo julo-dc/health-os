@@ -3,6 +3,9 @@ import { sql } from "@/lib/db";
 import { upsertMetrics, ensureMetricDef, todayISO } from "@/lib/metrics";
 import { recomputeDerived } from "@/lib/derive";
 
+// Recomputes the derived series, so this needs more than the 10s default.
+export const maxDuration = 60;
+
 /** Manual entry: metric values and/or a journal note for one date. */
 export const POST = route(async (user, req) => {
   const body = await req.json();
