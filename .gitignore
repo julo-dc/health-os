@@ -1,10 +1,13 @@
 node_modules
 .next
 
-# Secrets — never commit
+# Secrets — never commit.
+# .env.example is tracked but must ONLY ever contain placeholders:
+# it was once filled in with live credentials and committed.
 .env
 .env.local
 .env*.local
+.env.production
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
