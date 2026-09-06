@@ -21,6 +21,7 @@ export function Dashboard({ report, briefing, briefingAt, llmEnabled, stats }: {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [progress, setProgress] = useState<{ phase: string; steps: number; tools: string[] } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [diag, setDiag] = useState<SyncDiagnosis | null>(null);
   const g = report.goal;
@@ -30,7 +31,7 @@ export function Dashboard({ report, briefing, briefingAt, llmEnabled, stats }: {
     try {
       const res = await fetch("/api/sync", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ days: 180 }),
+        body: JSON.stringify({ days: 90 }),
       });
       const j = await res.json();
       setMsg(res.ok ? j.summary : j.error);
@@ -40,16 +41,55 @@ export function Dashboard({ report, briefing, briefingAt, llmEnabled, stats }: {
     finally { setSyncing(false); }
   };
 
+  /**
+   * Drive the briefing job to completion.
+   *
+   * The investigation takes minutes across a dozen model turns, which no
+   * serverless function will hold open, so each request advances one step and
+   * the loop lives here. The upside is that the user watches the model work —
+   * which tools it reached for — rather than a spinner.
+   */
   const brief = async () => {
-    setThinking(true); setMsg(null);
+    setThinking(true); setMsg(null); setProgress(null);
     try {
-      const res = await fetch("/api/insights", {
+      const started = await fetch("/api/insights", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
       });
-      const j = await res.json();
-      if (!res.ok) setMsg(j.error); else router.refresh();
-    } catch (e) { setMsg(e instanceof Error ? e.message : "Failed"); }
-    finally { setThinking(false); }
+      const job = await started.json();
+      if (!started.ok) { setMsg(job.error); return; }
+
+      let consecutiveFailures = 0;
+      for (let i = 0; i < 30; i++) {
+        // A step that times out at the platform level leaves the job untouched,
+        // so retrying simply re-runs it. Only give up after several in a row.
+        let s: any;
+        try {
+          const res = await fetch(`/api/insights/job/${job.jobId}`, { method: "POST" });
+          s = await res.json();
+          if (!res.ok) throw new Error(s?.error ?? `HTTP ${res.status}`);
+          consecutiveFailures = 0;
+        } catch (stepErr) {
+          if (++consecutiveFailures >= 3) {
+            setMsg(stepErr instanceof Error ? stepErr.message : "Briefing failed");
+            return;
+          }
+          continue;
+        }
+
+        setProgress({
+          phase: s.phase, steps: s.steps,
+          tools: [...new Set<string>(s.toolsUsed ?? [])],
+        });
+
+        if (s.status === "error") { setMsg(s.error ?? "Briefing failed"); return; }
+        if (s.status === "done") { router.refresh(); return; }
+      }
+      setMsg("The briefing did not finish in time. Try again.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setThinking(false); setProgress(null);
+    }
   };
 
   if (stats.metrics === 0) return <FirstRun onSync={sync} syncing={syncing} msg={msg} diag={diag} />;
@@ -76,7 +116,7 @@ export function Dashboard({ report, briefing, briefingAt, llmEnabled, stats }: {
       <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
         {g ? <ForecastPanel report={report} /> : <div />}
         <BriefingPanel briefing={briefing} at={briefingAt} llmEnabled={llmEnabled}
-                       onGenerate={brief} thinking={thinking} hasGoal={Boolean(g)} />
+                       onGenerate={brief} thinking={thinking} progress={progress} hasGoal={Boolean(g)} />
       </div>
 
       {/* ── State of the body ──────────────────────────────────────────── */}
@@ -335,9 +375,11 @@ function ForecastPanel({ report }: { report: FullReport }) {
   );
 }
 
-function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, hasGoal }: {
+function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, progress, hasGoal }: {
   briefing: Briefing | null; at: string | null; llmEnabled: boolean;
-  onGenerate: () => void; thinking: boolean; hasGoal: boolean;
+  onGenerate: () => void; thinking: boolean;
+  progress: { phase: string; steps: number; tools: string[] } | null;
+  hasGoal: boolean;
 }) {
   const [showTrace, setShowTrace] = useState(false);
   const toneFor = (v: string) => v === "yes" ? "good" : v === "partly" ? "warning" : v === "no" ? "critical" : "neutral";
@@ -352,7 +394,30 @@ function BriefingPanel({ briefing, at, llmEnabled, onGenerate, thinking, hasGoal
           </button>
         ) : null
       }>
-      {!llmEnabled ? (
+      {thinking && progress ? (
+        <div className="rounded-xl p-4" style={{ background: "var(--surface-2)" }}>
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Spinner />
+            {progress.phase === "write" ? "Writing the briefing…" : `Investigating — step ${progress.steps}`}
+          </div>
+          {progress.tools.length ? (
+            <div className="mt-2.5">
+              <div className="label mb-1.5">Looked at so far</div>
+              <div className="flex flex-wrap gap-1.5">
+                {progress.tools.map((t) => (
+                  <span key={t} className="chip text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                    {t.replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <p className="mt-2.5 text-[11px]" style={{ color: "var(--text-muted)" }}>
+            This takes a couple of minutes. It runs as a resumable job, so leaving the page
+            won&apos;t lose the work — it will be here when you come back.
+          </p>
+        </div>
+      ) : !llmEnabled ? (
         <Empty>Add <code>OPENROUTER_API_KEY</code> to your environment to enable AI briefings. Everything statistical works without it.</Empty>
       ) : !hasGoal ? (
         <Empty>Set a goal first — the briefing is written against it.</Empty>

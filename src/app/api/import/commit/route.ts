@@ -5,7 +5,7 @@ import { applyTransform, type ColumnPlan, type ImportPlan } from "@/lib/csv-clas
 import { upsertMetrics, ensureMetricDef } from "@/lib/metrics";
 import { recomputeDerived } from "@/lib/derive";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 /** Apply a confirmed import plan. The plan is whatever the user approved in the
  *  UI — possibly edited from what the model proposed. */

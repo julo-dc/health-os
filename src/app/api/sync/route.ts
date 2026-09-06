@@ -8,7 +8,7 @@ import {
   fetchRollup, fetchDailyList, fetchSleep, fetchExercise,
 } from "@/lib/googleHealth";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 /**
  * Pull from the Google Health API. Each data type is fetched independently and
@@ -20,72 +20,91 @@ export const POST = route(async (user, req) => {
   if (!token) throw bad("Google is not connected, or the refresh token expired. Reconnect in Settings.");
 
   const body = await req.json().catch(() => ({}));
-  const days = Math.min(Math.max(Number(body.days) || 90, 1), 730);
-  const to = todayISO();
+  // Capped at 180 days per request: each data type paginates, and four of them
+  // are limited to a 14-day window by Google, so a year would be hundreds of
+  // round trips — more than a 60s function can finish. The client asks for
+  // older ranges separately.
+  const days = Math.min(Math.max(Number(body.days) || 90, 1), 180);
+  const to = body.to && /^\d{4}-\d{2}-\d{2}$/.test(body.to) ? body.to : todayISO();
   const from = addDays(to, -days);
   const only: string[] | null = Array.isArray(body.types) && body.types.length ? body.types : null;
 
-  const results: { type: string; ok: boolean; rows: number; message?: string }[] = [];
+  type Result = { type: string; ok: boolean; rows: number; message?: string };
+  const results: Result[] = [];
   let totalRows = 0;
 
-  const record = async (type: string, ok: boolean, rows: number, message?: string) => {
-    results.push({ type, ok, rows, message });
-    await sql`INSERT INTO sync_log (user_id, provider, data_type, ok, rows, message)
-              VALUES (${user.id}, 'google_health', ${type}, ${ok}, ${rows}, ${message ?? null})`;
-  };
+  /** Run tasks with a concurrency cap — Google rate-limits, so not unbounded. */
+  async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
+    const queue = [...items];
+    await Promise.all(Array.from({ length: Math.min(limit, queue.length) }, async () => {
+      while (queue.length) {
+        const item = queue.shift();
+        if (item !== undefined) await fn(item);
+      }
+    }));
+  }
 
+  const jobs: { type: string; run: () => Promise<number> }[] = [];
   for (const type of Object.keys(ROLLUP_TYPES)) {
     if (only && !only.includes(type)) continue;
-    try {
+    jobs.push({ type, run: async () => {
       const { rows } = await fetchRollup(token, type, from, to);
-      totalRows += await upsertMetrics(user.id, rows);
-      await record(type, true, rows.length);
-    } catch (e) {
-      await record(type, false, 0, e instanceof Error ? e.message : String(e));
-    }
+      return upsertMetrics(user.id, rows);
+    }});
   }
-
   for (const type of [...Object.keys(DAILY_LIST_TYPES), ...Object.keys(SAMPLE_LIST_TYPES)]) {
     if (only && !only.includes(type)) continue;
-    try {
+    jobs.push({ type, run: async () => {
       const { rows } = await fetchDailyList(token, type, from, to);
-      totalRows += await upsertMetrics(user.id, rows);
-      await record(type, true, rows.length);
-    } catch (e) {
-      await record(type, false, 0, e instanceof Error ? e.message : String(e));
-    }
+      return upsertMetrics(user.id, rows);
+    }});
   }
-
   if (!only || only.includes("sleep")) {
-    try {
+    jobs.push({ type: "sleep", run: async () => {
       const { rows } = await fetchSleep(token, from, to);
-      totalRows += await upsertMetrics(user.id, rows);
-      await record("sleep", true, rows.length);
-    } catch (e) {
-      await record("sleep", false, 0, e instanceof Error ? e.message : String(e));
-    }
+      return upsertMetrics(user.id, rows);
+    }});
+  }
+  if (!only || only.includes("exercise")) {
+    jobs.push({ type: "exercise", run: async () => {
+      const workouts = await fetchExercise(token, from, to);
+      if (!workouts.length) return 0;
+      const batch = workouts.map((w) => ({
+        user_id: user.id, start_time: w.start_time, date: w.date, type: w.type, name: w.name,
+        duration_min: w.duration_min, distance_km: w.distance_km, avg_hr: w.avg_hr,
+        max_hr: w.max_hr, calories: w.calories, elevation_m: w.elevation_m,
+        source: "google_health", external_id: w.external_id, raw: sql.json(w.raw as never),
+      }));
+      // One statement instead of one per session.
+      await sql`
+        INSERT INTO workouts ${sql(batch, "user_id", "start_time", "date", "type", "name",
+          "duration_min", "distance_km", "avg_hr", "max_hr", "calories", "elevation_m",
+          "source", "external_id", "raw")}
+        ON CONFLICT (user_id, source, external_id) DO UPDATE SET
+          duration_min = EXCLUDED.duration_min, distance_km = EXCLUDED.distance_km,
+          avg_hr = EXCLUDED.avg_hr, calories = EXCLUDED.calories`;
+      return batch.length;
+    }});
   }
 
-  if (!only || only.includes("exercise")) {
+  await pool(jobs, 5, async (job) => {
     try {
-      const workouts = await fetchExercise(token, from, to);
-      let n = 0;
-      for (const w of workouts) {
-        await sql`
-          INSERT INTO workouts (user_id, start_time, date, type, name, duration_min, distance_km,
-                                avg_hr, max_hr, calories, elevation_m, source, external_id, raw)
-          VALUES (${user.id}, ${w.start_time}, ${w.date}, ${w.type}, ${w.name}, ${w.duration_min},
-                  ${w.distance_km}, ${w.avg_hr}, ${w.max_hr}, ${w.calories}, ${w.elevation_m},
-                  'google_health', ${w.external_id}, ${sql.json(w.raw as never)})
-          ON CONFLICT (user_id, source, external_id) DO UPDATE SET
-            duration_min = EXCLUDED.duration_min, distance_km = EXCLUDED.distance_km,
-            avg_hr = EXCLUDED.avg_hr, calories = EXCLUDED.calories`;
-        n++;
-      }
-      await record("exercise", true, n);
+      const n = await job.run();
+      totalRows += n;
+      results.push({ type: job.type, ok: true, rows: n });
     } catch (e) {
-      await record("exercise", false, 0, e instanceof Error ? e.message : String(e));
+      results.push({ type: job.type, ok: false, rows: 0, message: e instanceof Error ? e.message : String(e) });
     }
+  });
+
+  // One insert for the whole log. Previously each type awaited its own, inside
+  // the catch handler — so a failure to log aborted the remaining sync.
+  if (results.length) {
+    await sql`
+      INSERT INTO sync_log ${sql(results.map((r) => ({
+        user_id: user.id, provider: "google_health", data_type: r.type,
+        ok: r.ok, rows: r.rows, message: r.message ?? null,
+      })), "user_id", "provider", "data_type", "ok", "rows", "message")}`;
   }
 
   const derived = await recomputeDerived(user.id);
@@ -97,7 +116,7 @@ export const POST = route(async (user, req) => {
     range: { from, to },
     metricsWritten: totalRows,
     derived: derived.written,
-    results,
+    results: results.sort((a, b) => Number(b.ok) - Number(a.ok) || b.rows - a.rows),
     diagnosis: diagnose(failed, succeeded.length),
     summary: `${totalRows} readings from ${succeeded.length} data types` +
       (failed.length ? `, ${failed.length} unavailable` : ""),

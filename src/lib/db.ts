@@ -219,6 +219,27 @@ export async function migrate() {
     ran_at    timestamptz DEFAULT now()
   );
 
+  -- Long analyses run as resumable jobs rather than one long request. A
+  -- serverless function is capped at 60s on Vercel's free tier, and the coach
+  -- briefing needs several minutes of model time, so each HTTP call advances
+  -- the job by one step and the client polls until it finishes.
+  CREATE TABLE IF NOT EXISTS jobs (
+    id         bigserial PRIMARY KEY,
+    user_id    int REFERENCES users(id) ON DELETE CASCADE,
+    kind       text NOT NULL,
+    status     text NOT NULL DEFAULT 'running',   -- running | done | error
+    goal_id    int REFERENCES goals(id) ON DELETE SET NULL,
+    phase      text DEFAULT 'investigate',        -- investigate | write | finished
+    steps      int DEFAULT 0,
+    state      jsonb,       -- conversation so far
+    trace      jsonb,       -- which tools have been called
+    result     jsonb,
+    error      text,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS jobs_user ON jobs (user_id, kind, created_at DESC);
+
   CREATE TABLE IF NOT EXISTS settings (
     user_id int PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     tz      text DEFAULT 'Europe/London',

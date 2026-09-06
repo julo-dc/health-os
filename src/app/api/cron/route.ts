@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql, ensureDb } from "@/lib/db";
 import { recomputeDerived } from "@/lib/derive";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 /**
  * Scheduled recompute. Point Vercel Cron at this with a CRON_SECRET set.

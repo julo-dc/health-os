@@ -3,7 +3,7 @@ import { parseCsv, profileColumns } from "@/lib/csv";
 import { classifyCsv } from "@/lib/csv-classify";
 import { getMetricDefs } from "@/lib/metrics";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 /**
  * Parse an uploaded CSV and have the model work out what it is.

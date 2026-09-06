@@ -20,7 +20,7 @@ import { laggedCorrelation, bestLag, behaviourSplit, driverAnalysis } from "./an
 import { mean, median, stdev, quantile } from "./analytics/stats";
 import { SEMANTICS, semanticsFor } from "./semantics";
 import { PLAUSIBLE_RANGES } from "./metric-meta";
-import { chat, type ChatMessage } from "./openrouter";
+import { chat, type ChatMessage, type ToolCall } from "./openrouter";
 
 export type ToolDef = {
   type: "function";
@@ -435,6 +435,55 @@ export async function runTool(userId: number, name: string, args: Record<string,
 
 export type AgentTrace = { tool: string; args: Record<string, unknown>; ms: number };
 export type Investigation = { trace: AgentTrace[]; steps: number; messages: any[] };
+
+/**
+ * Advance a tool-using conversation by exactly ONE model turn.
+ *
+ * A serverless function has a hard wall-clock limit — 60s on Vercel's free
+ * tier — and a full investigation needs several minutes of model time. Rather
+ * than hold one request open and hope, each call here does a single turn
+ * (typically 10-30s) and hands the conversation back to be persisted, so the
+ * work is resumable and the user sees progress instead of a spinner.
+ */
+export async function runAgentStep(
+  userId: number,
+  messages: any[],
+  opts: { maxTokens?: number; temperature?: number; effort?: "low" | "medium" | "high"; force?: boolean } = {}
+): Promise<{ messages: any[]; calls: AgentTrace[]; done: boolean }> {
+  const { maxTokens = 8000, temperature = 0.4, effort = "low", force = false } = opts;
+  const convo = [...messages];
+
+  const res = await chat(convo as ChatMessage[], {
+    maxTokens, temperature, tools: TOOLS, effort,
+    toolChoice: force ? "none" : "auto",
+  });
+
+  if (!res.toolCalls?.length) {
+    if (res.content?.trim()) convo.push({ role: "assistant", content: res.content });
+    return { messages: convo, calls: [], done: true };
+  }
+
+  convo.push({ role: "assistant", content: res.content ?? "", tool_calls: res.toolCalls });
+  const calls: AgentTrace[] = [];
+
+  // Tool calls in one turn are independent, so run them together rather than
+  // paying their latency serially.
+  const results = await Promise.all(res.toolCalls.map(async (call: ToolCall) => {
+    const started = Date.now();
+    let args: Record<string, any> = {};
+    try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* tolerate */ }
+    let result: unknown;
+    try { result = await runTool(userId, call.function.name, args); }
+    catch (e) { result = { error: e instanceof Error ? e.message : "Tool failed" }; }
+    calls.push({ tool: call.function.name, args, ms: Date.now() - started });
+    return { call, result };
+  }));
+
+  for (const { call, result } of results) {
+    convo.push({ role: "tool", tool_call_id: call.id, name: call.function.name, content: JSON.stringify(result) });
+  }
+  return { messages: convo, calls, done: false };
+}
 
 /**
  * Run the tool-calling investigation and hand back the whole conversation.

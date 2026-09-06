@@ -4,7 +4,7 @@ import { chatJson, llmEnabled, visionModel } from "@/lib/openrouter";
 import { upsertMetrics, todayISO } from "@/lib/metrics";
 import { recomputeDerived } from "@/lib/derive";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export type PhotoAnalysis = {
   summary: string;

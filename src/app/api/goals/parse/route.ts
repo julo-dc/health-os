@@ -4,7 +4,7 @@ import { getMetricDefs, getSeriesMulti, todayISO, addDays } from "@/lib/metrics"
 import { PLAUSIBLE_RANGES, GOAL_KINDS, type MetricDef } from "@/lib/metric-meta";
 import { mean, median } from "@/lib/analytics/stats";
 
-export const maxDuration = 180;
+export const maxDuration = 60;
 
 type RawTarget = {
   metric_key: string; direction: string;

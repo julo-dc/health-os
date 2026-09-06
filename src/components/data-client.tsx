@@ -132,7 +132,7 @@ export function DataClient({ syncLog, coverage, workouts, connected, health }: {
             <label className="text-xs">
               <span className="label mb-1 block">History</span>
               <select className="input w-auto" value={syncDays} onChange={(e) => setSyncDays(Number(e.target.value))}>
-                {[30, 90, 180, 365, 730].map((d) => <option key={d} value={d}>{d} days</option>)}
+                {[30, 90, 180].map((d) => <option key={d} value={d}>{d} days</option>)}
               </select>
             </label>
             {connected ? (
