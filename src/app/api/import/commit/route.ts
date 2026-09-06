@@ -1,6 +1,6 @@
 import { route, bad } from "@/lib/api";
 import { sql } from "@/lib/db";
-import { parseCsv, parseDate, parseNumber } from "@/lib/csv";
+import { parseCsv, parseDate, parseNumber, parseDuration } from "@/lib/csv";
 import { applyTransform, type ColumnPlan, type ImportPlan } from "@/lib/csv-classify";
 import { upsertMetrics, ensureMetricDef } from "@/lib/metrics";
 import { recomputeDerived } from "@/lib/derive";
@@ -23,10 +23,19 @@ export const POST = route(async (user, req) => {
   if (dateCol < 0) throw bad("Map one column to 'date' before importing.");
 
   const idx = (h: string) => headers.indexOf(h);
+
+  /** Columns whose values are durations. parseNumber deliberately refuses
+   *  these — a duration has a unit and must not be guessed at. */
+  const DURATION_KEYS = new Set(["duration_min", "session_min", "duration_s", "sleep_hours", "workout_min"]);
+
   const valueOf = (r: string[], c: ColumnPlan): number | null => {
     const raw = r[idx(c.header)];
     if (raw === undefined) return null;
-    const n = parseNumber(raw);
+    // Try the duration parser first for duration-typed columns, then fall back
+    // to a plain number (a column of bare minutes is perfectly valid).
+    const n = c.metric && DURATION_KEYS.has(c.metric)
+      ? parseDuration(raw) ?? parseNumber(raw)
+      : parseNumber(raw);
     return n === null ? null : applyTransform(n, c.transform, c.scale);
   };
 

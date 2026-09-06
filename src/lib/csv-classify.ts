@@ -13,7 +13,7 @@
  * Its output is a *proposal* the user confirms in the UI, never a direct write.
  */
 import { chatJson, llmEnabled } from "./openrouter";
-import { autoMap, parseNumber, type ColumnProfile } from "./csv";
+import { autoMap, parseNumber, parseDuration, type ColumnProfile } from "./csv";
 import { PLAUSIBLE_RANGES, type MetricDef } from "./metric-meta";
 
 /** Unit conversions the model may request. A closed set — never arbitrary code. */
@@ -104,7 +104,7 @@ export function checkPlausibility(
     const i = headers.indexOf(c.header);
     if (i < 0) continue;
     const vals = rows.slice(0, 200)
-      .map((r) => parseNumber(r[i] ?? ""))
+      .map((r) => parseNumber(r[i] ?? "") ?? parseDuration(r[i] ?? ""))
       .filter((n): n is number => n !== null)
       .map((n) => applyTransform(n, c.transform, c.scale));
     if (vals.length < 2) continue;
